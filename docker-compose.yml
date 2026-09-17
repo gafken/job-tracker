@@ -9,6 +9,8 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
+    networks:
+      - appnet
 
   frontend:
     build:
@@ -19,3 +21,9 @@ services:
     ports:
       - "8080:80"
     restart: unless-stopped
+    networks:
+      - appnet
+
+networks:
+  appnet:
+    driver: bridge

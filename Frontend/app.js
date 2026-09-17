@@ -153,11 +153,20 @@ function renderContactStats() {
     `<span><b>${total}</b> tracked</span><span><b>${pending}</b> pending</span><span class="age-flag"><b>${needsFollowup}</b> need follow-up</span>`;
 }
 
+const contactModal = document.getElementById("contact-modal-backdrop");
+
+function setContactModalVisible(visible) {
+  contactModal.hidden = !visible;
+  contactModal.style.display = visible ? "flex" : "none";
+}
+
+setContactModalVisible(false);
+
 document.getElementById("add-contact-btn").addEventListener("click", () => {
-  document.getElementById("contact-modal-backdrop").hidden = false;
+  setContactModalVisible(true);
 });
 document.getElementById("contact-cancel").addEventListener("click", () => {
-  document.getElementById("contact-modal-backdrop").hidden = true;
+  setContactModalVisible(false);
 });
 document.getElementById("contact-form").addEventListener("submit", async e => {
   e.preventDefault();
@@ -169,7 +178,7 @@ document.getElementById("contact-form").addEventListener("submit", async e => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  document.getElementById("contact-modal-backdrop").hidden = true;
+  setContactModalVisible(false);
   e.target.reset();
   loadContacts();
 });
