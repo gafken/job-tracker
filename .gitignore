@@ -1,0 +1,22 @@
+# Local environment / secrets
+.env
+.env.*
+*.pem
+*.key
+*.crt
+
+# Local DB / generated runtime files
+jobtracker.db
+*.sqlite3
+
+# Python virtual environment and artifacts
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desk — Job Search Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-title">Desk</div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="jobs">Applications</button>
+    <button class="tab-btn" data-tab="contacts">Connections</button>
+    <button class="tab-btn" data-tab="chat">Assistant</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- JOBS -->
+  <section id="tab-jobs" class="tab-panel active">
+    <div class="panel-head">
+      <h1>Applications</h1>
+      <div class="stat-row" id="job-stats"></div>
+    </div>
+    <div class="filter-row" id="job-filters">
+      <button class="filter-chip active" data-status="all">All</button>
+      <button class="filter-chip" data-status="saved">Saved</button>
+      <button class="filter-chip" data-status="applied">Applied</button>
+      <button class="filter-chip" data-status="interviewing">Interviewing</button>
+      <button class="filter-chip" data-status="offer">Offer</button>
+      <button class="filter-chip" data-status="rejected">Rejected</button>
+      <button class="filter-chip" data-status="ghosted">Ghosted</button>
+    </div>
+    <div class="table-wrap">
+      <table id="jobs-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Company</th>
+            <th>Source</th>
+            <th>Age</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="jobs-tbody"></tbody>
+      </table>
+      <p class="empty-state" id="jobs-empty" hidden>Nothing tracked yet. Click the extension on a job listing to add one.</p>
+    </div>
+  </section>
+
+  <!-- CONTACTS -->
+  <section id="tab-contacts" class="tab-panel">
+    <div class="panel-head">
+      <h1>Connections</h1>
+      <div class="stat-row" id="contact-stats"></div>
+    </div>
+    <button class="btn-secondary" id="add-contact-btn">+ Add connection request</button>
+    <div class="table-wrap">
+      <table id="contacts-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Company / role</th>
+            <th>Sent</th>
+            <th>Status</th>
+            <th>Follow-up</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="contacts-tbody"></tbody>
+      </table>
+      <p class="empty-state" id="contacts-empty" hidden>No connection requests tracked yet.</p>
+    </div>
+  </section>
+
+  <!-- CHAT -->
+  <section id="tab-chat" class="tab-panel">
+    <div class="panel-head">
+      <h1>Assistant</h1>
+    </div>
+    <div class="chat-window" id="chat-window"></div>
+    <form id="chat-form" class="chat-form">
+      <input type="text" id="chat-input" placeholder="Ask about your applications or connections…" autocomplete="off">
+      <button type="submit">Send</button>
+    </form>
+  </section>
+
+</main>
+
+<!-- Add contact modal -->
+<div class="modal-backdrop" id="contact-modal-backdrop" hidden>
+  <div class="modal">
+    <h2>Add connection request</h2>
+    <form id="contact-form">
+      <label>Name <input type="text" name="name" required></label>
+      <label>LinkedIn URL <input type="url" name="linkedin_url" placeholder="https://linkedin.com/in/…"></label>
+      <label>Company <input type="text" name="company"></label>
+      <label>Role <input type="text" name="role"></label>
+      <label>Follow up after (days) <input type="number" name="follow_up_after_days" value="10" min="1"></label>
+      <label>Notes <textarea name="notes" rows="2"></textarea></label>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="contact-cancel">Cancel</button>
+        <button type="submit" class="btn-primary">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
