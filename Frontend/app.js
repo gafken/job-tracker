@@ -2,12 +2,15 @@ const API = "";
 
 // ---------- Tabs ----------
 document.querySelectorAll(".tab-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
+  btn.addEventListener("click", async () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
     document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
-    if (btn.dataset.tab === "chat") loadChatHistory();
+    if (btn.dataset.tab === "chat") {
+      const configured = await ensureAssistantAvailable();
+      if (configured) loadChatHistory();
+    }
   });
 });
 
@@ -173,6 +176,43 @@ document.getElementById("contact-form").addEventListener("submit", async e => {
 
 // ---------- Chat ----------
 const chatWindow = document.getElementById("chat-window");
+const chatForm = document.getElementById("chat-form");
+const chatInput = document.getElementById("chat-input");
+
+function showAssistantDisabledState(message = "Add your Claude key in the backend environment to use the Assistant.") {
+  chatWindow.innerHTML = "";
+  const div = document.createElement("div");
+  div.className = "chat-msg assistant";
+  div.textContent = message;
+  chatWindow.appendChild(div);
+  chatWindow.dataset.loaded = "1";
+  if (chatInput) chatInput.disabled = true;
+  if (chatForm) {
+    const submit = chatForm.querySelector("button[type='submit']");
+    if (submit) submit.disabled = true;
+  }
+}
+
+async function ensureAssistantAvailable() {
+  try {
+    const res = await fetch(`${API}/api/chat/status`);
+    const data = await res.json();
+    if (!data.configured) {
+      showAssistantDisabledState();
+      return false;
+    }
+
+    if (chatInput) chatInput.disabled = false;
+    if (chatForm) {
+      const submit = chatForm.querySelector("button[type='submit']");
+      if (submit) submit.disabled = false;
+    }
+    return true;
+  } catch (err) {
+    showAssistantDisabledState("The assistant is unavailable right now. Please check the backend configuration.");
+    return false;
+  }
+}
 
 function addChatMsg(role, content) {
   const div = document.createElement("div");
@@ -190,13 +230,13 @@ async function loadChatHistory() {
   chatWindow.dataset.loaded = "1";
 }
 
-document.getElementById("chat-form").addEventListener("submit", async e => {
+chatForm.addEventListener("submit", async e => {
   e.preventDefault();
-  const input = document.getElementById("chat-input");
-  const message = input.value.trim();
+  if (chatInput && chatInput.disabled) return;
+  const message = chatInput.value.trim();
   if (!message) return;
   addChatMsg("user", message);
-  input.value = "";
+  chatInput.value = "";
   const thinking = document.createElement("div");
   thinking.className = "chat-msg assistant";
   thinking.textContent = "…";
@@ -215,6 +255,8 @@ document.getElementById("chat-form").addEventListener("submit", async e => {
     thinking.textContent = "Error reaching the assistant. Is ANTHROPIC_API_KEY set on the backend?";
   }
 });
+
+ensureAssistantAvailable();
 
 function escapeHtml(str) {
   const div = document.createElement("div");

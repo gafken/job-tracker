@@ -1,4 +1,5 @@
 import datetime
+import os
 from typing import List
 
 from fastapi import FastAPI, Depends, HTTPException
@@ -156,6 +157,14 @@ def chat(chat_in: schemas.ChatIn, db: Session = Depends(get_db)):
 def chat_history(db: Session = Depends(get_db)):
     rows = db.query(models.ChatMessage).order_by(models.ChatMessage.timestamp.asc()).all()
     return [{"role": r.role, "content": r.content, "timestamp": r.timestamp.isoformat()} for r in rows]
+
+
+@app.get("/api/chat/status")
+def chat_status():
+    raw = (os.environ.get("ANTHROPIC_API_KEY") or "").strip()
+    sentinel = "your-claude-key-here"
+    key_present = bool(raw) and raw.lower() != sentinel.lower()
+    return {"configured": key_present}
 
 
 # ---------- Frontend ----------
