@@ -169,9 +169,11 @@ def chat_status():
 
 # ---------- Frontend ----------
 
-app.mount("/static", StaticFiles(directory="../Frontend"), name="static")
+FRONTEND_DIR = "/app/Frontend"
+
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 
 @app.get("/")
 def serve_dashboard():
-    return FileResponse("../Frontend/index.html")
+    return FileResponse(f"{FRONTEND_DIR}/index.html")

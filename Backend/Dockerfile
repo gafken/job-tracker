@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r /tmp/requirements.txt
 
 COPY Backend/ /app/Backend
+COPY Frontend/ /app/Frontend
 
 EXPOSE 8000
 

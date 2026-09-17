@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 
 import Backend.models as models
 
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+api_key = (os.environ.get("ANTHROPIC_API_KEY") or "").strip()
+client = anthropic.Anthropic(api_key=api_key) if api_key and api_key.lower() != "your-claude-key-here" else None
 
 MODEL = "claude-sonnet-4-6"
 
@@ -188,6 +189,9 @@ def chat(db: Session, history: list[dict], user_message: str) -> str:
     history: list of {"role": "user"|"assistant", "content": str}
     Returns the assistant's final text reply. Handles multi-turn tool use internally.
     """
+    if client is None:
+        raise RuntimeError("ANTHROPIC_API_KEY is not configured.")
+
     messages = history + [{"role": "user", "content": user_message}]
 
     while True:
