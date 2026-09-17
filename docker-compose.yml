@@ -6,11 +6,15 @@ services:
     container_name: jobtracker-backend
     env_file:
       - .env
+    environment:
+      - JOBTRACKER_DB_PATH=/data/jobtracker.db
     ports:
       - "8000:8000"
     restart: unless-stopped
     networks:
       - appnet
+    volumes:
+      - backend-data:/data
 
   frontend:
     build:
@@ -23,6 +27,9 @@ services:
     restart: unless-stopped
     networks:
       - appnet
+
+volumes:
+  backend-data:
 
 networks:
   appnet:

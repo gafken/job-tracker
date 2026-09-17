@@ -9,6 +9,7 @@
 # Local DB / generated runtime files
 jobtracker.db
 *.sqlite3
+.data/
 
 # Python virtual environment and artifacts
 .venv/
