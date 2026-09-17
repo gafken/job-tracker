@@ -4,8 +4,10 @@ services:
       context: .
       dockerfile: Backend/Dockerfile
     container_name: jobtracker-backend
+    env_file:
+      - .env
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-your-claude-key-here}
     ports:
       - "8000:8000"
     restart: unless-stopped
