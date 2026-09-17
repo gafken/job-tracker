@@ -16,6 +16,8 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 
 // ---------- Jobs ----------
 let currentFilter = "all";
+let jobsPage = 1;
+const JOBS_PAGE_SIZE = 10;
 const STATUSES = ["saved", "applied", "interviewing", "offer", "rejected", "ghosted", "withdrawn"];
 
 document.querySelectorAll("#job-filters .filter-chip").forEach(chip => {
@@ -30,9 +32,42 @@ document.querySelectorAll("#job-filters .filter-chip").forEach(chip => {
 let allJobs = [];
 
 async function loadJobs() {
-  const res = await fetch(`${API}/api/jobs`);
-  allJobs = await res.json();
+  const res = await fetch(`${API}/api/jobs?page=${jobsPage}&page_size=${JOBS_PAGE_SIZE}`);
+  const data = await res.json();
+  allJobs = Array.isArray(data) ? data : data.items || [];
   renderJobs();
+  renderJobsPagination(data.pages || 1, data.page || jobsPage, data.total || allJobs.length);
+}
+
+function renderJobsPagination(totalPages, currentPage, totalCount) {
+  const pagination = document.getElementById("jobs-pagination");
+  pagination.innerHTML = "";
+
+  const prev = document.createElement("button");
+  prev.textContent = "Prev";
+  prev.disabled = currentPage <= 1;
+  prev.addEventListener("click", () => {
+    if (jobsPage > 1) {
+      jobsPage -= 1;
+      loadJobs();
+    }
+  });
+  pagination.appendChild(prev);
+
+  const label = document.createElement("span");
+  label.textContent = `Page ${currentPage} of ${totalPages} • ${totalCount} total`;
+  pagination.appendChild(label);
+
+  const next = document.createElement("button");
+  next.textContent = "Next";
+  next.disabled = currentPage >= totalPages;
+  next.addEventListener("click", () => {
+    if (jobsPage < totalPages) {
+      jobsPage += 1;
+      loadJobs();
+    }
+  });
+  pagination.appendChild(next);
 }
 
 function renderJobs() {
@@ -118,11 +153,46 @@ function renderJobStats() {
 
 // ---------- Contacts ----------
 let allContacts = [];
+let contactsPage = 1;
+const CONTACTS_PAGE_SIZE = 10;
 
 async function loadContacts() {
-  const res = await fetch(`${API}/api/contacts`);
-  allContacts = await res.json();
+  const res = await fetch(`${API}/api/contacts?page=${contactsPage}&page_size=${CONTACTS_PAGE_SIZE}`);
+  const data = await res.json();
+  allContacts = Array.isArray(data) ? data : data.items || [];
   renderContacts();
+  renderContactsPagination(data.pages || 1, data.page || contactsPage, data.total || allContacts.length);
+}
+
+function renderContactsPagination(totalPages, currentPage, totalCount) {
+  const pagination = document.getElementById("contacts-pagination");
+  pagination.innerHTML = "";
+
+  const prev = document.createElement("button");
+  prev.textContent = "Prev";
+  prev.disabled = currentPage <= 1;
+  prev.addEventListener("click", () => {
+    if (contactsPage > 1) {
+      contactsPage -= 1;
+      loadContacts();
+    }
+  });
+  pagination.appendChild(prev);
+
+  const label = document.createElement("span");
+  label.textContent = `Page ${currentPage} of ${totalPages} • ${totalCount} total`;
+  pagination.appendChild(label);
+
+  const next = document.createElement("button");
+  next.textContent = "Next";
+  next.disabled = currentPage >= totalPages;
+  next.addEventListener("click", () => {
+    if (contactsPage < totalPages) {
+      contactsPage += 1;
+      loadContacts();
+    }
+  });
+  pagination.appendChild(next);
 }
 
 function renderContacts() {

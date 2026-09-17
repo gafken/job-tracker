@@ -1,4 +1,5 @@
 import datetime
+import math
 import os
 from typing import List
 
@@ -64,10 +65,30 @@ def create_job(job: schemas.JobCreate, db: Session = Depends(get_db)):
     return job_out(db_job)
 
 
-@app.get("/api/jobs", response_model=List[schemas.JobOut])
-def list_jobs(db: Session = Depends(get_db)):
-    jobs = db.query(models.Job).order_by(models.Job.date_added.desc()).all()
-    return [job_out(j) for j in jobs]
+@app.get("/api/jobs")
+def list_jobs(
+    db: Session = Depends(get_db),
+    page: int | None = None,
+    page_size: int | None = None,
+):
+    query = db.query(models.Job).order_by(models.Job.date_added.desc())
+    if page is None and page_size is None:
+        return [job_out(j) for j in query.all()]
+
+    page = page or 1
+    page_size = page_size or 20
+    page = max(1, page)
+    page_size = max(1, min(page_size, 200))
+
+    total = query.count()
+    jobs = query.offset((page - 1) * page_size).limit(page_size).all()
+    return {
+        "items": [job_out(j) for j in jobs],
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "pages": max(1, math.ceil(total / page_size)) if total else 1,
+    }
 
 
 @app.patch("/api/jobs/{job_id}", response_model=schemas.JobOut)
@@ -104,10 +125,30 @@ def create_contact(contact: schemas.ContactCreate, db: Session = Depends(get_db)
     return contact_out(db_contact)
 
 
-@app.get("/api/contacts", response_model=List[schemas.ContactOut])
-def list_contacts(db: Session = Depends(get_db)):
-    contacts = db.query(models.Contact).order_by(models.Contact.date_request_sent.desc()).all()
-    return [contact_out(c) for c in contacts]
+@app.get("/api/contacts")
+def list_contacts(
+    db: Session = Depends(get_db),
+    page: int | None = None,
+    page_size: int | None = None,
+):
+    query = db.query(models.Contact).order_by(models.Contact.date_request_sent.desc())
+    if page is None and page_size is None:
+        return [contact_out(c) for c in query.all()]
+
+    page = page or 1
+    page_size = page_size or 20
+    page = max(1, page)
+    page_size = max(1, min(page_size, 200))
+
+    total = query.count()
+    contacts = query.offset((page - 1) * page_size).limit(page_size).all()
+    return {
+        "items": [contact_out(c) for c in contacts],
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "pages": max(1, math.ceil(total / page_size)) if total else 1,
+    }
 
 
 @app.patch("/api/contacts/{contact_id}", response_model=schemas.ContactOut)
