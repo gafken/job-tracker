@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from Backend.database.database import Base, engine
 from Backend.routes import chat as chat_routes
 from Backend.routes import contacts as contacts_routes
+from Backend.routes import documents as documents_routes
 from Backend.routes import jobs as jobs_routes
 
 Base.metadata.create_all(bind=engine)
@@ -23,6 +24,7 @@ app.add_middleware(
 
 app.include_router(jobs_routes.router)
 app.include_router(contacts_routes.router)
+app.include_router(documents_routes.router)
 app.include_router(chat_routes.router)
 
 FRONTEND_DIR = "/app/Frontend"

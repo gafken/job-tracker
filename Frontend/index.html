@@ -15,6 +15,7 @@
   <nav class="tabs">
     <button class="tab-btn active" data-tab="jobs">Applications</button>
     <button class="tab-btn" data-tab="contacts">Connections</button>
+    <button class="tab-btn" data-tab="documents">Documents</button>
     <button class="tab-btn" data-tab="chat">Assistant</button>
   </nav>
 </header>
@@ -80,6 +81,55 @@
       </table>
       <div class="pagination" id="contacts-pagination"></div>
       <p class="empty-state" id="contacts-empty" hidden>No connection requests tracked yet.</p>
+    </div>
+  </section>
+
+  <!-- DOCUMENTS -->
+  <section id="tab-documents" class="tab-panel">
+    <div class="panel-head">
+      <h1>Documents</h1>
+      <div class="stat-row" id="document-stats"></div>
+    </div>
+    <button class="btn-secondary" id="add-document-btn">+ Add document</button>
+
+    <div class="document-upload-grid">
+      <div class="document-section">
+        <h3>Resume</h3>
+        <input id="resume-file-input" type="file" accept=".pdf,.doc,.docx,.txt,.rtf" hidden>
+        <button type="button" class="btn-secondary" data-doc-type="resume">Choose resume</button>
+        <div id="resume-file-list" class="file-list"></div>
+      </div>
+
+      <div class="document-section">
+        <h3>Certificates</h3>
+        <input id="certificate-file-input" type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" multiple hidden>
+        <button type="button" class="btn-secondary" data-doc-type="certificate">Choose certificates</button>
+        <div id="certificate-file-list" class="file-list"></div>
+      </div>
+
+      <div class="document-section">
+        <h3>Letters of Recommendation</h3>
+        <input id="recommendation-letter-file-input" type="file" accept=".pdf,.doc,.docx,.txt,.rtf" multiple hidden>
+        <button type="button" class="btn-secondary" data-doc-type="recommendation_letter">Choose letters</button>
+        <div id="recommendation_letter-file-list" class="file-list"></div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table id="documents-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Type</th>
+            <th>File</th>
+            <th>Notes</th>
+            <th>Added</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="documents-tbody"></tbody>
+      </table>
+      <p class="empty-state" id="documents-empty" hidden>No documents tracked yet.</p>
     </div>
   </section>
 
@@ -160,6 +210,32 @@
         <button type="button" class="btn-secondary" id="contact-cancel">Cancel</button>
         <button type="button" class="btn-secondary danger" id="contact-delete" hidden>Delete</button>
         <button type="submit" class="btn-primary" id="contact-submit">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add document modal -->
+<div class="modal-backdrop" id="document-modal-backdrop" hidden>
+  <div class="modal">
+    <h2 id="document-modal-title">Add document</h2>
+    <form id="document-form">
+      <label>Title <input type="text" name="title" required></label>
+      <label>Type
+        <select name="document_type">
+          <option value="resume">Resume</option>
+          <option value="recommendation_letter">Letter of recommendation</option>
+          <option value="certificate">Certificate</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+      <label>File name <input type="text" name="file_name" placeholder="resume-final.pdf"></label>
+      <label>URL <input type="url" name="url" placeholder="https://… or /docs/…"></label>
+      <label>Notes <textarea name="notes" rows="2"></textarea></label>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="document-cancel">Cancel</button>
+        <button type="button" class="btn-secondary danger" id="document-delete" hidden>Delete</button>
+        <button type="submit" class="btn-primary" id="document-submit">Add</button>
       </div>
     </form>
   </div>

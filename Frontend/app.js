@@ -284,17 +284,95 @@ function renderContactStats() {
     `<span><b>${total}</b> tracked</span><span><b>${pending}</b> pending</span><span class="age-flag"><b>${needsFollowup}</b> need follow-up</span>`;
 }
 
+// ---------- Documents ----------
+let allDocuments = [];
+
+async function loadDocuments() {
+  const res = await fetch(`${API}/api/documents`);
+  const data = await res.json();
+  allDocuments = Array.isArray(data) ? data : data.items || [];
+  renderDocuments();
+  renderDocumentStats();
+}
+
+function renderDocumentStats() {
+  const total = allDocuments.length;
+  const resumes = allDocuments.filter(d => d.document_type === "resume").length;
+  const letters = allDocuments.filter(d => d.document_type === "recommendation_letter").length;
+  const certificates = allDocuments.filter(d => d.document_type === "certificate").length;
+  document.getElementById("document-stats").innerHTML =
+    `<span><b>${total}</b> total</span><span><b>${resumes}</b> resumes</span><span><b>${letters}</b> letters</span><span><b>${certificates}</b> certs</span>`;
+}
+
+function renderDocuments() {
+  const tbody = document.getElementById("documents-tbody");
+  const empty = document.getElementById("documents-empty");
+  tbody.innerHTML = "";
+  empty.hidden = allDocuments.length > 0;
+
+  allDocuments.forEach(doc => {
+    const tr = document.createElement("tr");
+    tr.className = "document-row";
+    tr.dataset.documentId = String(doc.id);
+    tr.tabIndex = 0;
+    tr.setAttribute("role", "button");
+    tr.innerHTML = `
+      <td>${doc.url ? `<a class="doc-link" href="${doc.url}" target="_blank" rel="noopener">${escapeHtml(doc.title)}</a>` : escapeHtml(doc.title)}</td>
+      <td><span class="badge badge-${doc.document_type}">${doc.document_type.replace(/_/g, " ")}</span></td>
+      <td>${doc.file_name ? escapeHtml(doc.file_name) : (doc.url ? "link" : "—")}</td>
+      <td>${escapeHtml(doc.notes || "—")}</td>
+      <td>${formatDate(doc.date_added)}</td>
+      <td>
+        <button class="followup-btn danger" data-delete-document="${doc.id}">Delete</button>
+      </td>
+    `;
+
+    tr.addEventListener("click", e => {
+      if (e.target.closest("button") || e.target.closest("a")) return;
+      openDocumentModal(doc);
+    });
+
+    tr.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openDocumentModal(doc);
+      }
+    });
+
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll("[data-delete-document]").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const id = btn.dataset.deleteDocument;
+      const documentItem = allDocuments.find(d => String(d.id) === id);
+      deleteTargetType = "document";
+      deleteTargetId = String(id);
+      deleteConfirmText.textContent = documentItem
+        ? `Delete ${documentItem.title}? This will permanently remove it from your document library.`
+        : "Delete this document? This will permanently remove it from your list.";
+      setDeleteConfirmVisible(true);
+    });
+  });
+}
+
 const jobModal = document.getElementById("job-modal-backdrop");
 const jobForm = document.getElementById("job-form");
 const jobModalTitle = document.getElementById("job-modal-title");
 const jobSubmitButton = document.getElementById("job-submit");
 const jobDeleteButton = document.getElementById("job-delete");
 const contactModal = document.getElementById("contact-modal-backdrop");
+const documentModal = document.getElementById("document-modal-backdrop");
 const deleteConfirmModal = document.getElementById("delete-confirm-modal");
 const contactForm = document.getElementById("contact-form");
+const documentForm = document.getElementById("document-form");
 const contactModalTitle = document.getElementById("contact-modal-title");
+const documentModalTitle = document.getElementById("document-modal-title");
 const contactSubmitButton = document.getElementById("contact-submit");
+const documentSubmitButton = document.getElementById("document-submit");
 const contactDeleteButton = document.getElementById("contact-delete");
+const documentDeleteButton = document.getElementById("document-delete");
 const deleteConfirmText = document.getElementById("delete-confirm-text");
 let deleteTargetType = null;
 let deleteTargetId = null;
@@ -307,6 +385,11 @@ function setJobModalVisible(visible) {
 function setContactModalVisible(visible) {
   contactModal.hidden = !visible;
   contactModal.style.display = visible ? "flex" : "none";
+}
+
+function setDocumentModalVisible(visible) {
+  documentModal.hidden = !visible;
+  documentModal.style.display = visible ? "flex" : "none";
 }
 
 function setDeleteConfirmVisible(visible) {
@@ -356,8 +439,27 @@ function openContactModal(contact = null) {
   setContactModalVisible(true);
 }
 
+function openDocumentModal(documentItem = null) {
+  const mode = documentItem ? "edit" : "create";
+  documentModalTitle.textContent = documentItem ? "Edit document" : "Add document";
+  documentSubmitButton.textContent = documentItem ? "Save" : "Add";
+  documentDeleteButton.hidden = !documentItem;
+  documentForm.dataset.mode = mode;
+  documentForm.dataset.documentId = documentItem ? String(documentItem.id) : "";
+
+  documentForm.reset();
+  documentForm.elements.title.value = documentItem?.title || "";
+  documentForm.elements.document_type.value = documentItem?.document_type || "resume";
+  documentForm.elements.file_name.value = documentItem?.file_name || "";
+  documentForm.elements.url.value = documentItem?.url || "";
+  documentForm.elements.notes.value = documentItem?.notes || "";
+
+  setDocumentModalVisible(true);
+}
+
 setJobModalVisible(false);
 setContactModalVisible(false);
+setDocumentModalVisible(false);
 setDeleteConfirmVisible(false);
 
 document.getElementById("add-job-btn").addEventListener("click", () => {
@@ -366,8 +468,17 @@ document.getElementById("add-job-btn").addEventListener("click", () => {
 document.getElementById("add-contact-btn").addEventListener("click", () => {
   openContactModal();
 });
+const addDocumentButton = document.getElementById("add-document-btn");
+if (addDocumentButton) {
+  addDocumentButton.addEventListener("click", () => {
+    openDocumentModal();
+  });
+}
 document.getElementById("job-cancel").addEventListener("click", () => {
   setJobModalVisible(false);
+});
+document.getElementById("document-cancel").addEventListener("click", () => {
+  setDocumentModalVisible(false);
 });
 jobDeleteButton.addEventListener("click", () => {
   const jobId = jobForm.dataset.jobId;
@@ -422,6 +533,20 @@ contactDeleteButton.addEventListener("click", () => {
   setContactModalVisible(false);
   setDeleteConfirmVisible(true);
 });
+documentDeleteButton.addEventListener("click", () => {
+  const documentId = documentForm.dataset.documentId;
+  if (!documentId) return;
+
+  const documentItem = allDocuments.find(d => String(d.id) === documentId);
+  deleteTargetType = "document";
+  deleteTargetId = String(documentId);
+  deleteConfirmText.textContent = documentItem
+    ? `Delete ${documentItem.title}? This will permanently remove it from your document library.`
+    : "Delete this document? This will permanently remove it from your list.";
+
+  setDocumentModalVisible(false);
+  setDeleteConfirmVisible(true);
+});
 document.getElementById("delete-cancel").addEventListener("click", () => {
   setDeleteConfirmVisible(false);
 });
@@ -431,9 +556,12 @@ document.getElementById("delete-confirm").addEventListener("click", async () => 
   if (deleteTargetType === "job") {
     await fetch(`${API}/api/jobs/${deleteTargetId}`, { method: "DELETE" });
     loadJobs();
-  } else {
+  } else if (deleteTargetType === "contact") {
     await fetch(`${API}/api/contacts/${deleteTargetId}`, { method: "DELETE" });
     loadContacts();
+  } else {
+    await fetch(`${API}/api/documents/${deleteTargetId}`, { method: "DELETE" });
+    loadDocuments();
   }
 
   deleteTargetType = null;
@@ -462,11 +590,86 @@ contactForm.addEventListener("submit", async e => {
   e.target.reset();
   loadContacts();
 });
+documentForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  const payload = Object.fromEntries(form.entries());
+  payload.document_type = payload.document_type || "resume";
+
+  const isEdit = documentForm.dataset.mode === "edit";
+  const url = isEdit ? `${API}/api/documents/${documentForm.dataset.documentId}` : `${API}/api/documents`;
+  const method = isEdit ? "PATCH" : "POST";
+
+  await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  setDocumentModalVisible(false);
+  e.target.reset();
+  loadDocuments();
+});
 
 // ---------- Chat ----------
 const chatWindow = document.getElementById("chat-window");
 const chatForm = document.getElementById("chat-form");
 const chatInput = document.getElementById("chat-input");
+
+function bindFilePicker(button, input, type) {
+  if (!button || !input) return;
+
+  const displayIdMap = {
+    resume: "resume-file-list",
+    certificate: "certificate-file-list",
+    recommendation_letter: "recommendation_letter-file-list",
+    "recommendation-letter": "recommendation_letter-file-list",
+  };
+
+  button.addEventListener("click", () => {
+    input.click();
+  });
+
+  input.addEventListener("change", async () => {
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+
+    const displayId = displayIdMap[type] || `${type}-file-list`;
+    const display = document.getElementById(displayId);
+    if (display) {
+      display.innerHTML = "";
+      files.forEach(file => {
+        const pill = document.createElement("span");
+        pill.className = "file-pill";
+        pill.textContent = file.name;
+        display.appendChild(pill);
+      });
+    }
+
+    const payloads = files.map(file => ({
+      title: file.name,
+      document_type: type,
+      file_name: file.name,
+      url: "",
+      notes: `Selected from browser: ${file.name}`,
+    }));
+
+    for (const payload of payloads) {
+      await fetch(`${API}/api/documents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    input.value = "";
+    loadDocuments();
+  });
+}
+
+bindFilePicker(document.querySelector('[data-doc-type="resume"]'), document.getElementById("resume-file-input"), "resume");
+bindFilePicker(document.querySelector('[data-doc-type="certificate"]'), document.getElementById("certificate-file-input"), "certificate");
+bindFilePicker(document.querySelector('[data-doc-type="recommendation_letter"]'), document.getElementById("recommendation-letter-file-input"), "recommendation_letter");
 
 function showAssistantDisabledState(message = "Add your Claude key in the backend environment to use the Assistant.") {
   chatWindow.innerHTML = "";
@@ -569,3 +772,4 @@ function escapeHtml(str) {
 
 loadJobs();
 loadContacts();
+loadDocuments();

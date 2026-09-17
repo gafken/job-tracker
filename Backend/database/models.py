@@ -29,6 +29,13 @@ class ConnectionStatus(str, enum.Enum):
     ignored = "ignored"  # you marked it as not going to happen
 
 
+class DocumentType(str, enum.Enum):
+    resume = "resume"
+    recommendation_letter = "recommendation_letter"
+    certificate = "certificate"
+    other = "other"
+
+
 class Job(Base):
     __tablename__ = "jobs"
 
@@ -60,6 +67,18 @@ class Contact(Base):
     follow_up_after_days = Column(Integer, default=10)
     followed_up = Column(Boolean, default=False)
     notes = Column(Text, nullable=True)
+
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    document_type = Column(Enum(DocumentType), default=DocumentType.resume)
+    file_name = Column(String, nullable=True)
+    url = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    date_added = Column(DateTime, default=datetime.datetime.utcnow)
 
 
 class ChatMessage(Base):

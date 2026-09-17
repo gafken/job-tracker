@@ -38,6 +38,35 @@ class JobOut(BaseModel):
         from_attributes = True
 
 
+class DocumentCreate(BaseModel):
+    title: str
+    document_type: str = "resume"
+    file_name: Optional[str] = None
+    url: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class DocumentUpdate(BaseModel):
+    title: Optional[str] = None
+    document_type: Optional[str] = None
+    file_name: Optional[str] = None
+    url: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class DocumentOut(BaseModel):
+    id: int
+    title: str
+    document_type: str
+    file_name: Optional[str]
+    url: Optional[str]
+    notes: Optional[str]
+    date_added: datetime.datetime
+
+    class Config:
+        from_attributes = True
+
+
 class ContactCreate(BaseModel):
     name: str
     linkedin_url: Optional[str] = None
