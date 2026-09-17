@@ -107,6 +107,10 @@ function renderContacts() {
 
   allContacts.forEach(c => {
     const tr = document.createElement("tr");
+    tr.className = "contact-row";
+    tr.dataset.contactId = String(c.id);
+    tr.tabIndex = 0;
+    tr.setAttribute("role", "button");
     tr.innerHTML = `
       <td>${c.linkedin_url ? `<a href="${c.linkedin_url}" target="_blank" rel="noopener">${escapeHtml(c.name)}</a>` : escapeHtml(c.name)}</td>
       <td class="company">${escapeHtml(c.role || "")}${c.role && c.company ? " · " : ""}${escapeHtml(c.company || "")}</td>
@@ -117,6 +121,19 @@ function renderContacts() {
         ${c.status === "pending" ? `<button class="followup-btn" data-accept="${c.id}">Mark accepted</button>` : ""}
       </td>
     `;
+
+    tr.addEventListener("click", e => {
+      if (e.target.closest("button") || e.target.closest("a")) return;
+      openContactModal(c);
+    });
+
+    tr.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openContactModal(c);
+      }
+    });
+
     tbody.appendChild(tr);
   });
 
@@ -154,30 +171,61 @@ function renderContactStats() {
 }
 
 const contactModal = document.getElementById("contact-modal-backdrop");
+const contactForm = document.getElementById("contact-form");
+const contactModalTitle = document.getElementById("contact-modal-title");
+const contactSubmitButton = document.getElementById("contact-submit");
 
 function setContactModalVisible(visible) {
   contactModal.hidden = !visible;
   contactModal.style.display = visible ? "flex" : "none";
 }
 
+function openContactModal(contact = null) {
+  const mode = contact ? "edit" : "create";
+  contactModalTitle.textContent = contact ? "Edit connection request" : "Add connection request";
+  contactSubmitButton.textContent = contact ? "Save" : "Add";
+  contactForm.dataset.mode = mode;
+  contactForm.dataset.contactId = contact ? String(contact.id) : "";
+
+  contactForm.reset();
+  contactForm.elements.name.value = contact?.name || "";
+  contactForm.elements.linkedin_url.value = contact?.linkedin_url || "";
+  contactForm.elements.company.value = contact?.company || "";
+  contactForm.elements.role.value = contact?.role || "";
+  contactForm.elements.status.value = contact?.status || "pending";
+  contactForm.elements.follow_up_after_days.value = contact?.follow_up_after_days || 10;
+  contactForm.elements.followed_up.checked = Boolean(contact && contact.followed_up);
+  contactForm.elements.notes.value = contact?.notes || "";
+
+  setContactModalVisible(true);
+}
+
 setContactModalVisible(false);
 
 document.getElementById("add-contact-btn").addEventListener("click", () => {
-  setContactModalVisible(true);
+  openContactModal();
 });
 document.getElementById("contact-cancel").addEventListener("click", () => {
   setContactModalVisible(false);
 });
-document.getElementById("contact-form").addEventListener("submit", async e => {
+contactForm.addEventListener("submit", async e => {
   e.preventDefault();
   const form = new FormData(e.target);
   const payload = Object.fromEntries(form.entries());
   payload.follow_up_after_days = parseInt(payload.follow_up_after_days || "10", 10);
-  await fetch(`${API}/api/contacts`, {
-    method: "POST",
+  payload.followed_up = Boolean(payload.followed_up);
+  payload.status = payload.status || "pending";
+
+  const isEdit = contactForm.dataset.mode === "edit";
+  const url = isEdit ? `${API}/api/contacts/${contactForm.dataset.contactId}` : `${API}/api/contacts`;
+  const method = isEdit ? "PATCH" : "POST";
+
+  await fetch(url, {
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+
   setContactModalVisible(false);
   e.target.reset();
   loadContacts();

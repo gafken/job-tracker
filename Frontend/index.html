@@ -96,17 +96,25 @@
 <!-- Add contact modal -->
 <div class="modal-backdrop" id="contact-modal-backdrop" hidden>
   <div class="modal">
-    <h2>Add connection request</h2>
+    <h2 id="contact-modal-title">Add connection request</h2>
     <form id="contact-form">
       <label>Name <input type="text" name="name" required></label>
       <label>LinkedIn URL <input type="url" name="linkedin_url" placeholder="https://linkedin.com/in/…"></label>
       <label>Company <input type="text" name="company"></label>
       <label>Role <input type="text" name="role"></label>
+      <label>Status
+        <select name="status">
+          <option value="pending">pending</option>
+          <option value="accepted">accepted</option>
+          <option value="ignored">ignored</option>
+        </select>
+      </label>
       <label>Follow up after (days) <input type="number" name="follow_up_after_days" value="10" min="1"></label>
+      <label><input type="checkbox" name="followed_up"> Mark followed up</label>
       <label>Notes <textarea name="notes" rows="2"></textarea></label>
       <div class="modal-actions">
         <button type="button" class="btn-secondary" id="contact-cancel">Cancel</button>
-        <button type="submit" class="btn-primary">Add</button>
+        <button type="submit" class="btn-primary" id="contact-submit">Add</button>
       </div>
     </form>
   </div>
