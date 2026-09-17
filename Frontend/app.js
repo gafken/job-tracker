@@ -90,6 +90,7 @@ function renderJobs() {
       <td class="company">${escapeHtml(job.company)}</td>
       <td>${escapeHtml(job.platform)}</td>
       <td class="${ageFlag ? 'age-flag' : ''}">${job.age_days}d</td>
+      <td>${job.date_applied ? formatDate(job.date_applied) : "—"}</td>
       <td>
         <select class="status-select" data-id="${job.id}">
           ${STATUSES.map(s => `<option value="${s}" ${s === job.status ? "selected" : ""}>${s}</option>`).join("")}
@@ -327,6 +328,7 @@ function openJobModal(job = null) {
   jobForm.elements.url.value = job?.url || "";
   jobForm.elements.platform.value = job?.platform || "other";
   jobForm.elements.location.value = job?.location || "";
+  jobForm.elements.date_applied.value = job?.date_applied ? toDateInputValue(job.date_applied) : toDateInputValue(new Date());
   jobForm.elements.status.value = job?.status || "saved";
   jobForm.elements.notes.value = job?.notes || "";
 
@@ -387,6 +389,7 @@ jobForm.addEventListener("submit", async e => {
   const payload = Object.fromEntries(form.entries());
   payload.status = payload.status || "saved";
   payload.platform = payload.platform || "other";
+  payload.date_applied = payload.date_applied || null;
 
   const isEdit = jobForm.dataset.mode === "edit";
   const url = isEdit ? `${API}/api/jobs/${jobForm.dataset.jobId}` : `${API}/api/jobs`;
@@ -543,6 +546,20 @@ chatForm.addEventListener("submit", async e => {
 });
 
 ensureAssistantAvailable();
+
+function toDateInputValue(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+  return localDate.toISOString().split("T")[0];
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
 function escapeHtml(str) {
   const div = document.createElement("div");

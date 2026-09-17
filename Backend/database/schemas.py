@@ -9,6 +9,7 @@ class JobCreate(BaseModel):
     url: str
     platform: str = "other"
     location: Optional[str] = None
+    date_applied: Optional[datetime.datetime] = None
     description_snippet: Optional[str] = None
 
 
