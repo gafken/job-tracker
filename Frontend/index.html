@@ -114,9 +114,21 @@
       <label>Notes <textarea name="notes" rows="2"></textarea></label>
       <div class="modal-actions">
         <button type="button" class="btn-secondary" id="contact-cancel">Cancel</button>
+        <button type="button" class="btn-secondary danger" id="contact-delete" hidden>Delete</button>
         <button type="submit" class="btn-primary" id="contact-submit">Add</button>
       </div>
     </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="delete-confirm-modal" hidden>
+  <div class="modal small">
+    <h2>Delete connection?</h2>
+    <p id="delete-confirm-text">This will permanently remove this contact from your list.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="delete-cancel">Cancel</button>
+      <button type="button" class="btn-primary danger" id="delete-confirm">Delete</button>
+    </div>
   </div>
 </div>
 

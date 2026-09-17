@@ -118,7 +118,10 @@ function renderContacts() {
       <td><span class="badge badge-${c.status}">${c.status}</span></td>
       <td>${c.needs_follow_up ? `<button class="followup-btn" data-followup="${c.id}">Mark followed up</button>` : (c.status === "pending" ? "not yet" : "—")}</td>
       <td>
-        ${c.status === "pending" ? `<button class="followup-btn" data-accept="${c.id}">Mark accepted</button>` : ""}
+        <div class="row-actions">
+          ${c.status === "pending" ? `<button class="followup-btn" data-accept="${c.id}">Mark accepted</button>` : ""}
+          <button class="followup-btn danger" data-delete-contact="${c.id}">Delete</button>
+        </div>
       </td>
     `;
 
@@ -159,6 +162,20 @@ function renderContacts() {
     });
   });
 
+  tbody.querySelectorAll("[data-delete-contact]").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const id = btn.dataset.deleteContact;
+      const contact = allContacts.find(c => String(c.id) === id);
+      contactForm.dataset.contactId = String(id);
+      deleteConfirmText.textContent = contact
+        ? `Delete ${contact.name}? This will permanently remove them from your connection list.`
+        : "Delete this connection? This will permanently remove it from your list.";
+
+      setDeleteConfirmVisible(true);
+    });
+  });
+
   renderContactStats();
 }
 
@@ -171,19 +188,28 @@ function renderContactStats() {
 }
 
 const contactModal = document.getElementById("contact-modal-backdrop");
+const deleteConfirmModal = document.getElementById("delete-confirm-modal");
 const contactForm = document.getElementById("contact-form");
 const contactModalTitle = document.getElementById("contact-modal-title");
 const contactSubmitButton = document.getElementById("contact-submit");
+const contactDeleteButton = document.getElementById("contact-delete");
+const deleteConfirmText = document.getElementById("delete-confirm-text");
 
 function setContactModalVisible(visible) {
   contactModal.hidden = !visible;
   contactModal.style.display = visible ? "flex" : "none";
 }
 
+function setDeleteConfirmVisible(visible) {
+  deleteConfirmModal.hidden = !visible;
+  deleteConfirmModal.style.display = visible ? "flex" : "none";
+}
+
 function openContactModal(contact = null) {
   const mode = contact ? "edit" : "create";
   contactModalTitle.textContent = contact ? "Edit connection request" : "Add connection request";
   contactSubmitButton.textContent = contact ? "Save" : "Add";
+  contactDeleteButton.hidden = !contact;
   contactForm.dataset.mode = mode;
   contactForm.dataset.contactId = contact ? String(contact.id) : "";
 
@@ -201,12 +227,36 @@ function openContactModal(contact = null) {
 }
 
 setContactModalVisible(false);
+setDeleteConfirmVisible(false);
 
 document.getElementById("add-contact-btn").addEventListener("click", () => {
   openContactModal();
 });
 document.getElementById("contact-cancel").addEventListener("click", () => {
   setContactModalVisible(false);
+});
+contactDeleteButton.addEventListener("click", () => {
+  const contactId = contactForm.dataset.contactId;
+  if (!contactId) return;
+
+  const contact = allContacts.find(c => String(c.id) === contactId);
+  deleteConfirmText.textContent = contact
+    ? `Delete ${contact.name}? This will permanently remove them from your connection list.`
+    : "Delete this connection? This will permanently remove it from your list.";
+
+  setContactModalVisible(false);
+  setDeleteConfirmVisible(true);
+});
+document.getElementById("delete-cancel").addEventListener("click", () => {
+  setDeleteConfirmVisible(false);
+});
+document.getElementById("delete-confirm").addEventListener("click", async () => {
+  const contactId = contactForm.dataset.contactId;
+  if (!contactId) return;
+
+  await fetch(`${API}/api/contacts/${contactId}`, { method: "DELETE" });
+  setDeleteConfirmVisible(false);
+  loadContacts();
 });
 contactForm.addEventListener("submit", async e => {
   e.preventDefault();
