@@ -202,9 +202,9 @@ def chat_history(db: Session = Depends(get_db)):
 
 @app.get("/api/chat/status")
 def chat_status():
-    raw = (os.environ.get("ANTHROPIC_API_KEY") or "").strip()
-    sentinel = "your-claude-key-here"
-    key_present = bool(raw) and raw.lower() != sentinel.lower()
+    raw = (os.environ.get("GOOGLE_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or "").strip()
+    sentinel_values = {"your-google-key-here", "your-claude-key-here", "placeholder123"}
+    key_present = bool(raw) and raw.lower() not in {value.lower() for value in sentinel_values}
     return {"configured": key_present}
 
 

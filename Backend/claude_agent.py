@@ -1,91 +1,48 @@
-"""
-Claude-powered chat agent that can inspect and update your job/contact tracker
-via tool use. Requires ANTHROPIC_API_KEY to be set in the environment.
-"""
-import os
-import json
-import datetime
+"""Google Gemini-powered chat agent for the job tracker.
 
-import anthropic
+This file keeps the historical module name for compatibility with the rest of the app,
+while switching the actual provider to Google Gemini.
+"""
+import datetime
+import os
+from typing import Any
+
+try:
+    import google.generativeai as genai
+except ModuleNotFoundError:  # pragma: no cover - handled at runtime
+    genai = None
 from sqlalchemy.orm import Session
 
 import Backend.models as models
 
-api_key = (os.environ.get("ANTHROPIC_API_KEY") or "").strip()
-client = anthropic.Anthropic(api_key=api_key) if api_key and api_key.lower() != "your-claude-key-here" else None
+PROVIDER = "google"
+GOOGLE_API_KEY_ENV = "GOOGLE_API_KEY"
+LEGACY_API_KEY_ENV = "ANTHROPIC_API_KEY"
+PLACEHOLDER_VALUES = {
+    "your-google-key-here",
+    "your-claude-key-here",
+    "placeholder123",
+}
 
-MODEL = "claude-sonnet-4-6"
+MODEL = "gemini-2.0-flash"
 
 SYSTEM_PROMPT = """You are a job-search assistant embedded in the user's personal job tracker app.
-You have tools to look up and update their tracked job applications and LinkedIn connection requests.
-Be concise and practical. When asked about "stale" or "old" jobs, use a threshold of 14 days
-since date_added (or date_applied if set) with no status change, unless the user says otherwise.
-When asked about connections needing follow-up, use each contact's needs_follow_up flag.
-Never invent data - always call a tool to check before answering questions about the user's
-tracked jobs or contacts."""
+Be concise and practical. When asked about stale or old jobs, use a threshold of 14 days
+since date_added unless the user says otherwise. When asked about connections needing follow-up,
+use the follow-up status and pending dates already in the tracker. Never invent data.
+"""
 
-TOOLS = [
-    {
-        "name": "list_jobs",
-        "description": "List tracked job applications, optionally filtered by status.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "description": "Filter by status (saved, applied, interviewing, offer, rejected, ghosted, withdrawn). Omit for all.",
-                }
-            },
-        },
-    },
-    {
-        "name": "get_stale_jobs",
-        "description": "Get jobs with no status update in more than N days (default 14).",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "days": {"type": "integer", "description": "Age threshold in days. Default 14."}
-            },
-        },
-    },
-    {
-        "name": "update_job_status",
-        "description": "Update the status and/or notes of a tracked job by its id.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "job_id": {"type": "integer"},
-                "status": {"type": "string"},
-                "notes": {"type": "string"},
-            },
-            "required": ["job_id"],
-        },
-    },
-    {
-        "name": "list_contacts",
-        "description": "List LinkedIn connection requests, optionally filtered by status.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "status": {"type": "string", "description": "pending, accepted, or ignored. Omit for all."}
-            },
-        },
-    },
-    {
-        "name": "get_contacts_needing_followup",
-        "description": "Get pending LinkedIn connection requests that are past their follow-up window and haven't been followed up on yet.",
-        "input_schema": {"type": "object", "properties": {}},
-    },
-    {
-        "name": "mark_contact_followed_up",
-        "description": "Mark a contact as having been followed up on.",
-        "input_schema": {
-            "type": "object",
-            "properties": {"contact_id": {"type": "integer"}},
-            "required": ["contact_id"],
-        },
-    },
-]
+
+def get_api_key() -> str:
+    for env_name in (GOOGLE_API_KEY_ENV, LEGACY_API_KEY_ENV):
+        value = (os.environ.get(env_name) or "").strip()
+        if value and value.lower() not in {item.lower() for item in PLACEHOLDER_VALUES}:
+            return value
+    return ""
+
+
+def has_valid_api_key() -> bool:
+    return bool(get_api_key())
 
 
 def _job_to_dict(j: models.Job) -> dict:
@@ -125,102 +82,64 @@ def _contact_to_dict(c: models.Contact) -> dict:
     }
 
 
-def _execute_tool(db: Session, name: str, tool_input: dict) -> dict:
-    if name == "list_jobs":
-        q = db.query(models.Job)
-        if tool_input.get("status"):
-            q = q.filter(models.Job.status == tool_input["status"])
-        return {"jobs": [_job_to_dict(j) for j in q.all()]}
+def _tracker_snapshot(db: Session) -> str:
+    jobs = db.query(models.Job).all()
+    contacts = db.query(models.Contact).all()
 
-    if name == "get_stale_jobs":
-        days = tool_input.get("days", 14)
-        cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=days)
-        active_statuses = [
-            models.JobStatus.saved,
-            models.JobStatus.applied,
-            models.JobStatus.interviewing,
-        ]
-        q = db.query(models.Job).filter(
-            models.Job.last_updated < cutoff, models.Job.status.in_(active_statuses)
-        )
-        return {"stale_jobs": [_job_to_dict(j) for j in q.all()]}
+    job_lines = [
+        f"- {j.id}: {j.title} @ {j.company} | status={j.status.value if hasattr(j.status, 'value') else j.status} | age_days={max((datetime.datetime.utcnow() - j.date_added).days, 0)}"
+        for j in jobs[:20]
+    ]
+    contact_lines = [
+        f"- {c.id}: {c.name} ({c.company or c.role or 'unknown'}) | status={c.status.value if hasattr(c.status, 'value') else c.status} | days_pending={max((datetime.datetime.utcnow() - c.date_request_sent).days, 0)} | followed_up={c.followed_up}"
+        for c in contacts[:20]
+    ]
 
-    if name == "update_job_status":
-        job = db.query(models.Job).filter(models.Job.id == tool_input["job_id"]).first()
-        if not job:
-            return {"error": "job not found"}
-        if tool_input.get("status"):
-            job.status = tool_input["status"]
-        if tool_input.get("notes") is not None:
-            job.notes = tool_input["notes"]
-        job.last_updated = datetime.datetime.utcnow()
-        db.commit()
-        db.refresh(job)
-        return {"updated": _job_to_dict(job)}
+    return "\n".join([
+        "Tracked jobs:",
+        *(job_lines or ["- none"]),
+        "",
+        "Tracked contacts:",
+        *(contact_lines or ["- none"]),
+    ])
 
-    if name == "list_contacts":
-        q = db.query(models.Contact)
-        if tool_input.get("status"):
-            q = q.filter(models.Contact.status == tool_input["status"])
-        return {"contacts": [_contact_to_dict(c) for c in q.all()]}
 
-    if name == "get_contacts_needing_followup":
-        contacts = db.query(models.Contact).filter(
-            models.Contact.status == models.ConnectionStatus.pending,
-            models.Contact.followed_up == False,  # noqa: E712
-        ).all()
-        result = [_contact_to_dict(c) for c in contacts]
-        result = [c for c in result if c["needs_follow_up"]]
-        return {"contacts_needing_followup": result}
+def _extract_text(response: Any) -> str:
+    if hasattr(response, "text") and response.text:
+        return response.text.strip()
 
-    if name == "mark_contact_followed_up":
-        c = db.query(models.Contact).filter(models.Contact.id == tool_input["contact_id"]).first()
-        if not c:
-            return {"error": "contact not found"}
-        c.followed_up = True
-        db.commit()
-        return {"updated": _contact_to_dict(c)}
+    parts: list[str] = []
+    candidates = getattr(response, "candidates", []) or []
+    for candidate in candidates:
+        content = getattr(candidate, "content", None)
+        if not content:
+            continue
+        for part in getattr(content, "parts", []) or []:
+            text = getattr(part, "text", None)
+            if text:
+                parts.append(text)
+    return "\n".join(parts).strip()
 
-    return {"error": f"unknown tool {name}"}
+
+def _get_model():
+    if genai is None:
+        return None
+    api_key = get_api_key()
+    if not api_key:
+        return None
+    genai.configure(api_key=api_key)
+    return genai.GenerativeModel(MODEL)
+
+
+client = _get_model()
 
 
 def chat(db: Session, history: list[dict], user_message: str) -> str:
-    """
-    history: list of {"role": "user"|"assistant", "content": str}
-    Returns the assistant's final text reply. Handles multi-turn tool use internally.
-    """
-    if client is None:
-        raise RuntimeError("ANTHROPIC_API_KEY is not configured.")
+    model = _get_model()
+    if model is None:
+        raise RuntimeError("GOOGLE_API_KEY is not configured.")
 
-    messages = history + [{"role": "user", "content": user_message}]
-
-    while True:
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=1500,
-            system=SYSTEM_PROMPT,
-            tools=TOOLS,
-            messages=messages,
-        )
-
-        if response.stop_reason != "tool_use":
-            # Concatenate any text blocks
-            text_parts = [b.text for b in response.content if b.type == "text"]
-            return "\n".join(text_parts).strip()
-
-        # Append assistant's tool-use turn to the conversation
-        messages.append({"role": "assistant", "content": response.content})
-
-        tool_results = []
-        for block in response.content:
-            if block.type == "tool_use":
-                result = _execute_tool(db, block.name, block.input)
-                tool_results.append(
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": json.dumps(result, default=str),
-                    }
-                )
-
-        messages.append({"role": "user", "content": tool_results})
+    transcript = "\n".join(f"{entry.get('role', 'user')}: {entry.get('content', '')}" for entry in history)
+    prompt = f"{SYSTEM_PROMPT}\n\nTracker snapshot:\n{_tracker_snapshot(db)}\n\nConversation:\n{transcript}\n\nUser: {user_message}"
+    response = model.generate_content(prompt)
+    return _extract_text(response)
