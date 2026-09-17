@@ -27,6 +27,7 @@
       <h1>Applications</h1>
       <div class="stat-row" id="job-stats"></div>
     </div>
+    <button class="btn-secondary" id="add-job-btn">+ Add application</button>
     <div class="filter-row" id="job-filters">
       <button class="filter-chip active" data-status="all">All</button>
       <button class="filter-chip" data-status="saved">Saved</button>
@@ -92,6 +93,45 @@
   </section>
 
 </main>
+
+<!-- Edit job modal -->
+<div class="modal-backdrop" id="job-modal-backdrop" hidden>
+  <div class="modal">
+    <h2 id="job-modal-title">Add application</h2>
+    <form id="job-form">
+      <label>Role <input type="text" name="title" required></label>
+      <label>Company <input type="text" name="company" required></label>
+      <label>URL <input type="url" name="url" placeholder="https://…" required></label>
+      <label>Platform
+        <select name="platform">
+          <option value="linkedin">linkedin</option>
+          <option value="indeed">indeed</option>
+          <option value="dice">dice</option>
+          <option value="wellfound">wellfound</option>
+          <option value="other">other</option>
+        </select>
+      </label>
+      <label>Location <input type="text" name="location"></label>
+      <label>Status
+        <select name="status">
+          <option value="saved">saved</option>
+          <option value="applied">applied</option>
+          <option value="interviewing">interviewing</option>
+          <option value="offer">offer</option>
+          <option value="rejected">rejected</option>
+          <option value="ghosted">ghosted</option>
+          <option value="withdrawn">withdrawn</option>
+        </select>
+      </label>
+      <label>Notes <textarea name="notes" rows="2"></textarea></label>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="job-cancel">Cancel</button>
+        <button type="button" class="btn-secondary danger" id="job-delete" hidden>Delete</button>
+        <button type="submit" class="btn-primary" id="job-submit">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- Add contact modal -->
 <div class="modal-backdrop" id="contact-modal-backdrop" hidden>

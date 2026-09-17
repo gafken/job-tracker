@@ -46,6 +46,10 @@ function renderJobs() {
   filtered.forEach(job => {
     const tr = document.createElement("tr");
     const ageFlag = job.age_days >= 14 && ["saved", "applied", "interviewing"].includes(job.status);
+    tr.className = "job-row";
+    tr.dataset.jobId = String(job.id);
+    tr.tabIndex = 0;
+    tr.setAttribute("role", "button");
     tr.innerHTML = `
       <td><a class="role-title" href="${job.url}" target="_blank" rel="noopener">${escapeHtml(job.title)}</a></td>
       <td class="company">${escapeHtml(job.company)}</td>
@@ -56,8 +60,23 @@ function renderJobs() {
           ${STATUSES.map(s => `<option value="${s}" ${s === job.status ? "selected" : ""}>${s}</option>`).join("")}
         </select>
       </td>
-      <td><button class="followup-btn" data-delete-job="${job.id}">Remove</button></td>
+      <td>
+        <button class="followup-btn danger" data-delete-job="${job.id}">Delete</button>
+      </td>
     `;
+
+    tr.addEventListener("click", e => {
+      if (e.target.closest("button") || e.target.closest("a") || e.target.closest("select")) return;
+      openJobModal(job);
+    });
+
+    tr.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openJobModal(job);
+      }
+    });
+
     tbody.appendChild(tr);
   });
 
@@ -73,9 +92,16 @@ function renderJobs() {
   });
 
   tbody.querySelectorAll("[data-delete-job]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      await fetch(`${API}/api/jobs/${btn.dataset.deleteJob}`, { method: "DELETE" });
-      loadJobs();
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const id = btn.dataset.deleteJob;
+      const job = allJobs.find(j => String(j.id) === id);
+      deleteTargetType = "job";
+      deleteTargetId = String(id);
+      deleteConfirmText.textContent = job
+        ? `Delete ${job.title} at ${job.company}? This will permanently remove it from your tracked applications.`
+        : "Delete this application? This will permanently remove it from your list.";
+      setDeleteConfirmVisible(true);
     });
   });
 
@@ -187,6 +213,11 @@ function renderContactStats() {
     `<span><b>${total}</b> tracked</span><span><b>${pending}</b> pending</span><span class="age-flag"><b>${needsFollowup}</b> need follow-up</span>`;
 }
 
+const jobModal = document.getElementById("job-modal-backdrop");
+const jobForm = document.getElementById("job-form");
+const jobModalTitle = document.getElementById("job-modal-title");
+const jobSubmitButton = document.getElementById("job-submit");
+const jobDeleteButton = document.getElementById("job-delete");
 const contactModal = document.getElementById("contact-modal-backdrop");
 const deleteConfirmModal = document.getElementById("delete-confirm-modal");
 const contactForm = document.getElementById("contact-form");
@@ -194,6 +225,13 @@ const contactModalTitle = document.getElementById("contact-modal-title");
 const contactSubmitButton = document.getElementById("contact-submit");
 const contactDeleteButton = document.getElementById("contact-delete");
 const deleteConfirmText = document.getElementById("delete-confirm-text");
+let deleteTargetType = null;
+let deleteTargetId = null;
+
+function setJobModalVisible(visible) {
+  jobModal.hidden = !visible;
+  jobModal.style.display = visible ? "flex" : "none";
+}
 
 function setContactModalVisible(visible) {
   contactModal.hidden = !visible;
@@ -203,6 +241,26 @@ function setContactModalVisible(visible) {
 function setDeleteConfirmVisible(visible) {
   deleteConfirmModal.hidden = !visible;
   deleteConfirmModal.style.display = visible ? "flex" : "none";
+}
+
+function openJobModal(job = null) {
+  const mode = job ? "edit" : "create";
+  jobModalTitle.textContent = job ? "Edit application" : "Add application";
+  jobSubmitButton.textContent = job ? "Save" : "Add";
+  jobDeleteButton.hidden = !job;
+  jobForm.dataset.mode = mode;
+  jobForm.dataset.jobId = job ? String(job.id) : "";
+
+  jobForm.reset();
+  jobForm.elements.title.value = job?.title || "";
+  jobForm.elements.company.value = job?.company || "";
+  jobForm.elements.url.value = job?.url || "";
+  jobForm.elements.platform.value = job?.platform || "other";
+  jobForm.elements.location.value = job?.location || "";
+  jobForm.elements.status.value = job?.status || "saved";
+  jobForm.elements.notes.value = job?.notes || "";
+
+  setJobModalVisible(true);
 }
 
 function openContactModal(contact = null) {
@@ -226,11 +284,53 @@ function openContactModal(contact = null) {
   setContactModalVisible(true);
 }
 
+setJobModalVisible(false);
 setContactModalVisible(false);
 setDeleteConfirmVisible(false);
 
+document.getElementById("add-job-btn").addEventListener("click", () => {
+  openJobModal();
+});
 document.getElementById("add-contact-btn").addEventListener("click", () => {
   openContactModal();
+});
+document.getElementById("job-cancel").addEventListener("click", () => {
+  setJobModalVisible(false);
+});
+jobDeleteButton.addEventListener("click", () => {
+  const jobId = jobForm.dataset.jobId;
+  if (!jobId) return;
+
+  const job = allJobs.find(j => String(j.id) === jobId);
+  deleteTargetType = "job";
+  deleteTargetId = String(jobId);
+  deleteConfirmText.textContent = job
+    ? `Delete ${job.title} at ${job.company}? This will permanently remove it from your tracked applications.`
+    : "Delete this application? This will permanently remove it from your list.";
+
+  setJobModalVisible(false);
+  setDeleteConfirmVisible(true);
+});
+jobForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  const payload = Object.fromEntries(form.entries());
+  payload.status = payload.status || "saved";
+  payload.platform = payload.platform || "other";
+
+  const isEdit = jobForm.dataset.mode === "edit";
+  const url = isEdit ? `${API}/api/jobs/${jobForm.dataset.jobId}` : `${API}/api/jobs`;
+  const method = isEdit ? "PATCH" : "POST";
+
+  await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  setJobModalVisible(false);
+  e.target.reset();
+  loadJobs();
 });
 document.getElementById("contact-cancel").addEventListener("click", () => {
   setContactModalVisible(false);
@@ -240,6 +340,8 @@ contactDeleteButton.addEventListener("click", () => {
   if (!contactId) return;
 
   const contact = allContacts.find(c => String(c.id) === contactId);
+  deleteTargetType = "contact";
+  deleteTargetId = String(contactId);
   deleteConfirmText.textContent = contact
     ? `Delete ${contact.name}? This will permanently remove them from your connection list.`
     : "Delete this connection? This will permanently remove it from your list.";
@@ -251,12 +353,19 @@ document.getElementById("delete-cancel").addEventListener("click", () => {
   setDeleteConfirmVisible(false);
 });
 document.getElementById("delete-confirm").addEventListener("click", async () => {
-  const contactId = contactForm.dataset.contactId;
-  if (!contactId) return;
+  if (!deleteTargetType || !deleteTargetId) return;
 
-  await fetch(`${API}/api/contacts/${contactId}`, { method: "DELETE" });
+  if (deleteTargetType === "job") {
+    await fetch(`${API}/api/jobs/${deleteTargetId}`, { method: "DELETE" });
+    loadJobs();
+  } else {
+    await fetch(`${API}/api/contacts/${deleteTargetId}`, { method: "DELETE" });
+    loadContacts();
+  }
+
+  deleteTargetType = null;
+  deleteTargetId = null;
   setDeleteConfirmVisible(false);
-  loadContacts();
 });
 contactForm.addEventListener("submit", async e => {
   e.preventDefault();
