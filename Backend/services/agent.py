@@ -1,8 +1,4 @@
-"""Google Gemini-powered chat agent for the job tracker.
-
-This file keeps the historical module name for compatibility with the rest of the app,
-while switching the actual provider to Google Gemini.
-"""
+"""Google Gemini-powered chat agent for the job tracker."""
 import datetime
 import os
 from typing import Any
@@ -13,7 +9,7 @@ except ModuleNotFoundError:  # pragma: no cover - handled at runtime
     genai = None
 from sqlalchemy.orm import Session
 
-import Backend.models as models
+import Backend.database.models as models
 
 PROVIDER = "google"
 GOOGLE_API_KEY_ENV = "GOOGLE_API_KEY"

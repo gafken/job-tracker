@@ -2,7 +2,7 @@ import datetime
 import enum
 
 from sqlalchemy import Column, Integer, String, DateTime, Text, Enum, Boolean
-from Backend.database import Base
+from Backend.database.database import Base
 
 
 class Platform(str, enum.Enum):
